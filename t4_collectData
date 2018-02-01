@@ -1,0 +1,72 @@
+##################
+#File name: 
+#Author: Kelsey Herndon
+#Affiliation: The University of Alabama in Huntsville
+#Date Created: 4/12/2017
+#Last Date Modified: 4/12/2017
+#Purpose: The purpose of this script is to gather statistical data on the waterbodies and surrounding areas
+#Dependencies: arcpy
+###################
+
+#import dependencies
+import arcpy
+from arcpy import env
+from arcpy.sa import *
+
+#check-out ArcGIS Spatial Analyst extension license 
+arcpy.CheckOutExtension("Spatial")
+
+#define workspace
+arcpy.env.workspace = r"C:\Users\KHerndon\Desktop\test"
+
+#enable overwriting
+arcpy.env.overwriteOutput = True
+
+#define local variables
+    #define water body polygon shapefile
+H2opoly = r"C:\Users\KHerndon\Desktop\test\h2opoly.shp"
+    #define original mndwi raster
+mndwi = r"C:\Users\KHerndon\Desktop\test\mndwiBasin.tif"
+    #define reclassified mndwi where land is nodata
+mndwi_reclass1 = r"C:\Users\KHerndon\Desktop\test\mndwi_reclass1.tif"
+    #define ndvi raster
+ndviBasin = r"C:\Users\KHerndon\Desktop\test\ndviBasin.tif"
+    #define ndti raster
+ndtiBasin = r"C:\Users\KHerndon\Desktop\test\ndtiBasin.tif"
+
+#gathering water body size statistics
+    #calculate area of each waterbody polygon in square meters
+zoneField = 'ID'
+outTableH2o = r"C:\Users\KHerndon\Desktop\test\h20bodyStats.dbf"
+H20bodyStats = ZonalGeometryAsTable(H2opoly, zoneField, outTableH2o, "10")
+
+#gathering ndvi data
+    #Reclass mndwi so that water bodies are no data
+        #Execute Con tool
+mndwi_reclass2 = Con (mndwi, 1, "", "VALUE<-.2")
+        #Save the output
+mndwi_reclass2.save(r"C:\Users\KHerndon\Desktop\test\mndwi_reclass2.tif")
+
+    #extract ndvi values that do not overlap mndwi water values
+ndvi86H2o = ExtractByMask (ndviBasin, mndwi_reclass2)
+        #save non-water ndvi 
+ndvi86H2o.save(r"C:\Users\KHerndon\Desktop\test\ndvi86H.tif")
+
+    #create buffer around each water body
+inputPoly = H2opoly
+outputBuff = r"C:\Users\KHerndon\Desktop\test\h2oBuff.shp"
+distance = "200 Meters"
+arcpy.Buffer_analysis(inputPoly, outputBuff, distance, "OUTSIDE_ONLY")
+
+    #calcuate average ndvi for buffer around each water body
+inputBuff = outputBuff
+outputTable_ndviBuff = r"C:\Users\KHerndon\Desktop\test\tbl_ndvi.dbf"
+BuffNdvi = ZonalStatisticsAsTable(inputBuff, "ID", ndvi86H2o, outputTable_ndviBuff, "DATA", "MEAN")
+
+#gathering ndti data
+    #calculate average ndti for each water body
+inputPoly = H2opoly
+outputTable_ndtiH2o = r"C:\Users\KHerndon\Desktop\test\tbl_ndtiH2o.dbf"
+ndtiH2o = ZonalStatisticsAsTable(inputPoly, "ID", ndtiBasin, outputTable_ndtiH2o, "DATA", "MEAN")
+
+print "Data collection is complete."
