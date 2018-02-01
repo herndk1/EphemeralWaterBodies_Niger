@@ -1,0 +1,50 @@
+##################
+#File name: 
+#Author: Kelsey Herndon
+#Affiliation: The University of Alabama in Huntsville
+#Date Created: 4/12/2017
+#Last Date Modified: 4/12/2017
+#Purpose: The purpose of this script is to calculate an Ordinary Least Squares for water surface area, ndvi, and ndti.
+#Dependencies: arcpy
+###################
+
+#import dependencies
+import arcpy
+from arcpy import env
+
+#define the workspace
+arcpy.env.workspace = r"C:\Users\KHerndon\Desktop\test"
+
+#enable overwriting
+arcpy.env.overwriteOutput = True
+
+#define local variables
+surfaceArea = r"C:\Users\KHerndon\Desktop\test\h2opoly.shp"
+tablendti = r"C:\Users\KHerndon\Desktop\test\tbl_ndtiH2o.dbf"
+tablendvi = r"C:\Users\KHerndon\Desktop\test\tbl_ndvi.dbf"
+joinField = "ID"
+
+#Rename water body shapefile
+waterShp = surfaceArea[:-4] + "Master.shp"
+arcpy.CopyFeatures_management(surfaceArea, waterShp)
+print "Complete renaming shapefile."
+
+#Join stats to new shapefile
+    #join ndvi
+join1 = arcpy.JoinField_management(waterShp, joinField, tablendvi, joinField)
+joinfile1 = r"C:\Users\KHerndon\Desktop\test\master2.shp"
+arcpy.CopyFeatures_management(join1, joinfile1)
+print "Complete joining ndvi stats to shapefile."
+
+    #join ndti
+join2 = arcpy.JoinField_management(joinfile1, joinField, tablendti, joinField)
+joinfile2 = r"C:\Users\KHerndon\Desktop\test\master3.shp"
+arcpy.CopyFeatures_management(join2, joinfile2)
+print "Complete joining ndti stats to shapefile."
+
+#Ordinary Least Squares
+    # Perform Ordinary Least Squares stats with NDVI as the dependent variable and surface area and NDTI as the independent variables. 
+ols_results =  arcpy.env.workspace + "\ols_results.shp"
+outpdf = r"C:\Users\KHerndon\Desktop\test\ols_results.pdf"
+arcpy.OrdinaryLeastSquares_stats(joinfile2, 'ID', ols_results, 'MEAN', 'MEAN_1;AREA', '#', '#', outpdf)
+print "Completed OLS."
